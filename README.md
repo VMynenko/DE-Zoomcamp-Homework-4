@@ -86,3 +86,42 @@ SELECT
 FROM cte_with_lag
 ```
 - `green: {best: 2020/Q1, worst: 2020/Q2}, yellow: {best: 2020/Q1, worst: 2020/Q2}`
+
+## Question 6: P97/P95/P90 Taxi Monthly Fare  
+Now, what are the values of p97, p95, p90 for Green Taxi and Yellow Taxi, in April 2020?    
+```dbt
+WITH filtered_trips AS (
+    SELECT 
+        service_type,
+        EXTRACT(YEAR FROM pickup_datetime) AS year,
+        EXTRACT(MONTH FROM pickup_datetime) AS month,
+        fare_amount
+    FROM {{ ref('fact_trips') }}
+    WHERE 
+        fare_amount > 0 
+        AND trip_distance > 0 
+        AND payment_type_description IN ('Cash', 'Credit Card')
+),
+percentile_calculation AS (
+    SELECT 
+        service_type,
+        CONCAT(
+            year,
+            "-",
+            month
+        ) AS year_month,
+        APPROX_QUANTILES(fare_amount, 100)[OFFSET(97)] AS fare_p97,
+        APPROX_QUANTILES(fare_amount, 100)[OFFSET(95)] AS fare_p95,
+        APPROX_QUANTILES(fare_amount, 100)[OFFSET(90)] AS fare_p90
+    FROM filtered_trips
+    GROUP BY service_type, year, month
+)
+SELECT 
+    service_type,
+    year_month,
+    fare_p97,
+    fare_p95,
+    fare_p90
+FROM percentile_calculation
+```
+- `green: {p97: 55.0, p95: 45.0, p90: 26.5}, yellow: {p97: 31.5, p95: 25.5, p90: 19.0}`
