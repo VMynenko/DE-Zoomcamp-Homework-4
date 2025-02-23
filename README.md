@@ -125,3 +125,58 @@ SELECT
 FROM percentile_calculation
 ```
 - `green: {p97: 55.0, p95: 45.0, p90: 26.5}, yellow: {p97: 31.5, p95: 25.5, p90: 19.0}`
+
+## Question 7: Top #Nth longest P90 travel time Location for FHV  
+For the Trips that respectively started from Newark Airport, SoHo, and Yorkville East, in November 2019, what are dropoff_zones with the 2nd longest p90 trip_duration?    
+```dbt
+WITH trip_durations AS (
+    SELECT 
+        EXTRACT(YEAR FROM pickup_datetime) AS year,
+        EXTRACT(MONTH FROM pickup_datetime) AS month,
+        pickup_borough,
+        pickup_zone,
+        dropoff_borough,
+        dropoff_zone,
+        TIMESTAMP_DIFF(dropoff_datetime, pickup_datetime, SECOND) AS trip_duration
+    FROM {{ ref('dim_fhv_trips') }}
+    WHERE pickup_datetime IS NOT NULL AND dropoff_datetime IS NOT NULL
+),
+p90_calculation AS (
+    SELECT 
+        year,
+        month,
+        pickup_borough,
+        pickup_zone,
+        dropoff_borough,
+        dropoff_zone,
+        APPROX_QUANTILES(trip_duration, 100)[OFFSET(90)] AS trip_duration_p90
+    FROM trip_durations
+    GROUP BY year, month, pickup_borough, pickup_zone, dropoff_borough, dropoff_zone
+)
+SELECT 
+    year,
+    month,
+    pickup_borough,
+    pickup_zone,
+    dropoff_borough,
+    dropoff_zone,
+    trip_duration_p90
+FROM p90_calculation
+```
+```sql
+WITH sample AS (
+  SELECT * 
+  FROM `de_zoomcamp.fct_fhv_monthly_zone_traveltime_p90` 
+  WHERE pickup_zone IN ('Newark Airport', 'SoHo', 'Yorkville East')
+    AND year = 2019
+    AND month = 11
+)
+
+SELECT 
+  pickup_zone,
+  dropoff_zone, 
+  trip_duration_p90
+FROM sample
+QUALIFY ROW_NUMBER() OVER(PARTITION BY pickup_zone ORDER BY trip_duration_p90 DESC) = 2
+```
+- `LaGuardia Airport, Chinatown, Garment District`
