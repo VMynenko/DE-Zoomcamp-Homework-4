@@ -37,3 +37,10 @@ Considering the data lineage below and that taxi_zone_lookup is the only materia
 <img src="https://github.com/VMynenko/DE-Zoomcamp-Homework-4/blob/main/homework_q2.png" alt="green_taxi" width="500" />  
 This option is NOT applicable for materializing fct_taxi_monthly_zone_revenue:
 - `dbt run --select models/staging/+`
+
+## Question 4: dbt Macros and Jinja  
+Correct statements:  
+- `Setting a value for DBT_BIGQUERY_TARGET_DATASET env var is mandatory, or it'll fail to compile`
+- `When using core, it materializes in the dataset defined in DBT_BIGQUERY_TARGET_DATASET`
+- `When using stg, it materializes in the dataset defined in DBT_BIGQUERY_STAGING_DATASET, or defaults to DBT_BIGQUERY_TARGET_DATASET`
+- `When using staging, it materializes in the dataset defined in DBT_BIGQUERY_STAGING_DATASET, or defaults to DBT_BIGQUERY_TARGET_DATASET`
