@@ -44,3 +44,45 @@ Correct statements:
 - `When using core, it materializes in the dataset defined in DBT_BIGQUERY_TARGET_DATASET`
 - `When using stg, it materializes in the dataset defined in DBT_BIGQUERY_STAGING_DATASET, or defaults to DBT_BIGQUERY_TARGET_DATASET`
 - `When using staging, it materializes in the dataset defined in DBT_BIGQUERY_STAGING_DATASET, or defaults to DBT_BIGQUERY_TARGET_DATASET`
+
+## Question 5: Taxi Quarterly Revenue Growth  
+Considering the YoY Growth in 2020, which were the yearly quarters with the best (or less worse) and worst results for green, and yellow?  
+```dbt
+WITH cte AS (
+    SELECT 
+        CONCAT(
+            EXTRACT(YEAR FROM pickup_datetime),
+            '-Q',
+            EXTRACT(QUARTER FROM pickup_datetime)
+        ) AS year_quarter,
+        service_type,
+        SUM(total_amount) AS quarterly_revenue
+    FROM {{ ref('fact_trips') }}
+    GROUP BY 1, 2
+),
+cte_with_lag AS (
+    SELECT 
+        year_quarter,
+        service_type,
+        quarterly_revenue,
+        LAG(quarterly_revenue) OVER (
+            PARTITION BY service_type 
+            ORDER BY year_quarter
+        ) AS prev_year_revenue
+    FROM cte
+)
+SELECT 
+    year_quarter,
+    service_type,
+    quarterly_revenue,
+    prev_year_revenue,
+    CASE 
+        WHEN prev_year_revenue = 0 OR prev_year_revenue IS NULL THEN NULL 
+        ELSE ROUND(
+            (quarterly_revenue - prev_year_revenue) / prev_year_revenue * 100, 
+            2
+        )
+    END AS yoy_growth_percentage
+FROM cte_with_lag
+```
+- `green: {best: 2020/Q1, worst: 2020/Q2}, yellow: {best: 2020/Q1, worst: 2020/Q2}`
